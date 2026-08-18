@@ -1,0 +1,92 @@
+@model SecurityFirm.Models.RegisterManagerViewModel
+@{
+    ViewData["Title"] = "Нов мениджър";
+}
+
+<div class="page-header">
+    <div class="d-flex align-center gap-16">
+        <a asp-action="Users" class="btn btn-ghost btn-icon"><i class="fas fa-arrow-left"></i></a>
+        <div>
+            <h1 class="page-title">Нов акаунт</h1>
+            <p class="page-subtitle">Създайте акаунт за мениджър или администратор</p>
+        </div>
+    </div>
+</div>
+
+<div style="max-width:600px">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fas fa-user-tie" style="color:var(--accent)"></i> Данни за акаунта</span>
+        </div>
+        <div class="card-body">
+            <form asp-action="RegisterManager" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-16"></div>
+
+                <div class="form-group">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" placeholder="Пълно име" />
+                    <span asp-validation-for="FullName" class="form-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" type="email" class="form-control" placeholder="email@security.bg" />
+                    <span asp-validation-for="Email" class="form-error"></span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label asp-for="Password" class="form-label"></label>
+                        <input asp-for="Password" type="password" class="form-control" placeholder="••••••••" />
+                        <span asp-validation-for="Password" class="form-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="ConfirmPassword" class="form-label"></label>
+                        <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="••••••••" />
+                        <span asp-validation-for="ConfirmPassword" class="form-error"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Role" class="form-label"></label>
+                    <select asp-for="Role" class="form-control form-select">
+                        <option value="Manager">Мениджър</option>
+                        <option value="Admin">Администратор</option>
+                    </select>
+                    <div style="margin-top:6px;font-size:12px;color:var(--text-muted)">
+                        <strong>Мениджър</strong> – управлява персонал, обекти и документи.<br />
+                        <strong>Администратор</strong> – пълен достъп, включително управление на акаунти.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"
+                              placeholder="Вътрешни забележки за акаунта..."></textarea>
+                </div>
+
+                <div style="background:var(--warning-soft);border:1px solid #FDE68A;border-radius:8px;padding:12px 14px;margin-bottom:18px">
+                    <div style="font-size:13px;color:#92400E;font-weight:500">
+                        <i class="fas fa-triangle-exclamation"></i> Важно
+                    </div>
+                    <div style="font-size:12px;color:#92400E;margin-top:4px">
+                        Паролата трябва да съдържа поне 6 символа, главна буква, малка буква, цифра и специален знак.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-10" style="justify-content:flex-end">
+                    <a asp-action="Users" class="btn btn-ghost">Отказ</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Създай акаунт
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+}

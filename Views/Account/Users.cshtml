@@ -1,0 +1,120 @@
+@model IEnumerable<SecurityFirm.Models.ApplicationUser>
+@{
+    ViewData["Title"] = "Потребители";
+    var userRoles = ViewBag.UserRoles as Dictionary<string, IList<string>> ?? new();
+}
+
+<div class="page-header">
+    <div class="page-actions">
+        <a asp-action="RegisterManager" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Нов акаунт
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title"><i class="fas fa-users-gear" style="color:var(--accent)"></i> Системни потребители</span>
+        <span class="badge badge-blue">@Model.Count() активни</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Потребител</th>
+                    <th>Имейл</th>
+                    <th>Роля</th>
+                    <th>Добавен на</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                        <tr>
+                            <td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
+                                Няма намерени потребители
+                            </td>
+                        </tr>
+                }
+                @foreach (var user in Model.OrderBy(u => u.FullName))
+                {
+                    var roles = userRoles.GetValueOrDefault(user.Id) ?? new List<string>();
+                    var isAdmin = roles.Contains("Admin");
+                    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    var isSelf = user.Id == currentUserId;
+
+                        <tr cursor="pointer" >
+                            <td>
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <div class="user-avatar" style="background:@(isAdmin ? "var(--primary)" : "var(--accent)")">
+                                    @(user.FullName.Length > 0 ? user.FullName[0].ToString().ToUpper() : "?")
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:600;font-size:14px">
+                                        @user.FullName
+                                        @if (isSelf)
+                                        {
+                                            <span class="badge badge-blue" style="margin-left:6px">Вие</span>
+                                        }
+                                        </div>
+                                    @if (!string.IsNullOrEmpty(user.Notes))
+                                    {
+                                                <div style="font-size:11px;color:var(--text-muted)">@user.Notes</div>
+                                    }
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="font-size:13px;color:var(--text-secondary)">@user.Email</td>
+                            <td>
+                            @if (isAdmin)
+                            {
+                                        <span class="badge" style="background:#EEF2FF;color:var(--primary)">
+                                            <i class="fas fa-crown"></i> Администратор
+                                        </span>
+                            }
+                            else
+                            {
+                                        <span class="badge badge-blue">
+                                            <i class="fas fa-user-tie"></i> Мениджър
+                                        </span>
+                            }
+                            </td>
+                            <td style="font-size:13px;color:var(--text-secondary)">
+                            @user.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")
+                            </td>
+                            <td>
+                            @if (user.IsActive)
+                            {
+                                        <span class="badge badge-success"><i class="fas fa-circle" style="font-size:6px"></i>Активен</span>
+                            }
+                            else
+                            {
+                                        <span class="badge badge-gray">Неактивен</span>
+                            }
+                            </td>
+                            <td style="text-align:right">
+                            @if (!isSelf && user.IsActive)
+                            {
+                                        <form asp-action="DeactivateUser" method="post" class="d-inline"
+                                              id="deact-@user.Id">
+                                    @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="button" class="btn btn-ghost btn-sm"
+                                                    style="color:var(--danger)"
+                                                    onclick="confirmAction('Деактивирате акаунта на @Html.Raw(user.FullName)?', 'deact-@user.Id')">
+                                                <i class="fas fa-ban"></i> Деактивирай
+                                            </button>
+                                        </form>
+                            }
+                            @if (isSelf)
+                            {
+                                        <span class="text-muted" style="font-size:12px">Текущ потребител</span>
+                            }
+                            </td>
+                        </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
