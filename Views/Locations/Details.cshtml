@@ -1,0 +1,517 @@
+@model SecurityFirm.Models.Location
+@using SecurityFirm.Models
+@{
+    ViewData["Title"] = Model.Name;
+    var schedule = ViewBag.Schedule as ScheduleViewModel;
+    var allStaff = ViewBag.AllStaff as List<StaffMember> ?? new();
+    int curMonth = (int)(ViewBag.Month ?? DateTime.Now.Month);
+    int curYear  = (int)(ViewBag.Year  ?? DateTime.Now.Year);
+    var bg = new System.Globalization.CultureInfo("bg-BG");
+    var riskLabel = Model.RiskLevel switch {
+        RiskLevel.Low      => "Нисък",
+        RiskLevel.Medium   => "Среден",
+        RiskLevel.High     => "Висок",
+        RiskLevel.Critical => "Критичен",
+        _ => ""
+    };
+    var riskBadge = Model.RiskLevel switch {
+        RiskLevel.Low      => "risk-badge-1",
+        RiskLevel.Medium   => "risk-badge-2",
+        RiskLevel.High     => "risk-badge-3",
+        RiskLevel.Critical => "risk-badge-4",
+        _ => "badge-gray"
+    };
+}
+
+<div class="page-header">
+    <div class="d-flex align-center gap-16">
+        <a asp-action="Index" class="btn btn-ghost btn-icon"><i class="fas fa-arrow-left"></i></a>
+        <div>
+            <h1 class="page-title">@Model.Name</h1>
+            <p class="page-subtitle"><i class="fas fa-location-dot"></i> @Model.Address</p>
+        </div>
+    </div>
+    <div class="page-actions">
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary">
+                <i class="fas fa-pen"></i> Редактирай
+            </a>
+        }
+        @if (User.IsInRole("Admin") && Model.IsActive)
+        {
+            <form id="del-loc-form" asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="button" class="btn btn-danger"
+                    onclick="confirmAction('Сигурни ли сте, че искате да деактивирате обекта?','del-loc-form')">
+                    <i class="fas fa-ban"></i> Деактивирай
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+<!-- Top info grid -->
+<div class="detail-grid">
+    <!-- Left column: details -->
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-circle-info" style="color:var(--accent)"></i> Информация за обекта</span>
+                <span class="badge @riskBadge">Риск: @riskLabel</span>
+            </div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label"><i class="fas fa-location-dot"></i> Адрес</span>
+                        <span class="info-value">@Model.Address</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Info))
+                    {
+                        <div class="info-row">
+                            <span class="info-label"><i class="fas fa-circle-info"></i> Описание</span>
+                            <span class="info-value" style="line-height:1.6">@Model.Info</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <div class="info-row">
+                            <span class="info-label"><i class="fas fa-note-sticky"></i> Забележки</span>
+                            <span class="info-value" style="line-height:1.6">@Model.Notes</span>
+                        </div>
+                    }
+                    <div class="info-row">
+                        <span class="info-label"><i class="fas fa-circle-dot"></i> Статус</span>
+                        <span class="info-value">
+                            @if (Model.IsActive)
+                            { <span class="badge badge-success"><i class="fas fa-circle" style="font-size:6px"></i>Активен</span> }
+                            else
+                            { <span class="badge badge-gray">Неактивен</span> }
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cameras -->
+        @if (Model.Cameras.Any())
+        {
+            <div class="card mt-16">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-video" style="color:var(--accent)"></i> Камери за видеонаблюдение</span>
+                    <span class="badge badge-blue">@Model.Cameras.Count камери</span>
+                </div>
+                <div class="card-body">
+                    <div class="camera-list">
+                        @foreach (var cam in Model.Cameras)
+                        {
+                            <div class="camera-chip">
+                                <i class="fas fa-video"></i>
+                                <div>
+                                    <div style="font-weight:600">@cam.Name</div>
+                                    @if (!string.IsNullOrEmpty(cam.Position))
+                                    {
+                                        <div style="font-size:11px;color:var(--text-muted)">@cam.Position</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right column: assigned staff + documents -->
+    <div>
+        <!-- Assigned staff -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-users" style="color:var(--accent)"></i> Назначен персонал</span>
+                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                {
+                    <button class="btn btn-primary btn-sm" onclick="openModal('assign-modal')">
+                        <i class="fas fa-user-plus"></i> Назначи
+                    </button>
+                }
+            </div>
+            <div class="card-body" style="padding:0">
+                @if (!Model.Assignments.Any())
+                {
+                    <div class="empty-state" style="padding:24px">
+                        <i class="fas fa-users"></i>
+                        <p style="margin-top:8px">Няма назначени служители</p>
+                    </div>
+                }
+                @foreach (var a in Model.Assignments)
+                {
+                    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-soft)">
+                        <div class="staff-avatar" style="width:36px;height:36px;font-size:14px;border-radius:9px;flex-shrink:0">
+                            @(a.StaffMember?.Name[0] ?? '?')
+                        </div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:500;font-size:13px">@a.StaffMember?.Name</div>
+                            <div style="font-size:11px;color:var(--text-muted)">
+                                От @a.AssignedFrom.ToString("dd.MM.yyyy", bg)
+                            </div>
+                        </div>
+                        <div class="d-flex gap-8">
+                            <a asp-controller="Staff" asp-action="Details" asp-route-id="@a.StaffMemberId"
+                               class="btn btn-ghost btn-icon-sm"><i class="fas fa-eye"></i></a>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                            {
+                                <form asp-action="RemoveAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@a.Id" />
+                                    <input type="hidden" name="locationId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-icon-sm"
+                                            title="Премахни назначението"
+                                            onclick="return confirm('Премахнете назначението?')">
+                                        <i class="fas fa-xmark" style="color:var(--danger)"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Documents accordion -->
+        <div class="docs-accordion mt-16">
+            <div class="docs-accordion-header">
+                <div class="d-flex align-center gap-10">
+                    <i class="fas fa-folder-open" style="color:var(--warning)"></i>
+                    <span style="font-weight:600;font-size:14px">Документи и инспекции</span>
+                    @if (Model.Documents.Any())
+                    {
+                        <span class="badge badge-blue">@Model.Documents.Count</span>
+                    }
+                </div>
+                <i class="fas fa-chevron-down accordion-icon" style="color:var(--text-muted);transition:transform .2s"></i>
+            </div>
+            <div class="docs-accordion-body">
+                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                {
+                    <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" style="margin-bottom:14px">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="locationId" value="@Model.Id" />
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <input type="file" name="file" accept=".pdf,.doc,.docx" required
+                                   class="form-control" style="flex:1;min-width:180px" />
+                            <input type="text" name="description" placeholder="Описание (незадълж.)"
+                                   class="form-control" style="flex:1;min-width:160px" />
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-upload"></i> Качи
+                            </button>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                            Позволени формати: PDF, DOC, DOCX
+                        </div>
+                    </form>
+                }
+
+                @if (!Model.Documents.Any())
+                {
+                    <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">
+                        <i class="fas fa-file-slash" style="font-size:24px;opacity:.3;display:block;margin-bottom:8px"></i>
+                        Няма качени документи
+                    </div>
+                }
+                else
+                {
+                    @foreach (var doc in Model.Documents.OrderByDescending(d => d.UploadedAt))
+                    {
+                        var docIcon = doc.ContentType.Contains("pdf") ? "fa-file-pdf" : "fa-file-word";
+                        var docColor = doc.ContentType.Contains("pdf") ? "#EF4444" : "#2563EB";
+                        var sizeKb = (doc.FileSize / 1024.0).ToString("0.#");
+                        <div class="doc-item">
+                            <i class="fas @docIcon doc-icon" style="color:@docColor;font-size:20px"></i>
+                            <div style="flex:1;min-width:0">
+                                <div class="doc-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    @doc.OriginalFileName
+                                </div>
+                                @if (!string.IsNullOrEmpty(doc.Description))
+                                {
+                                    <div style="font-size:11px;color:var(--text-secondary)">@doc.Description</div>
+                                }
+                                <div style="font-size:11px;color:var(--text-muted)">
+                                    @sizeKb КБ · @doc.UploadedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm", bg)
+                                </div>
+                            </div>
+                            <a asp-action="DownloadDocument" asp-route-id="@doc.Id"
+                               class="btn btn-ghost btn-icon-sm" title="Изтегли">
+                                <i class="fas fa-download" style="color:var(--accent)"></i>
+                            </a>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                            {
+                                <form asp-action="DeleteDocument" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@doc.Id" />
+                                    <input type="hidden" name="locationId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-icon-sm"
+                                            onclick="return confirm('Изтрийте документа?')" title="Изтрий">
+                                        <i class="fas fa-trash" style="color:var(--danger)"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Schedule Table ─────────────────────────────────────────────────────── -->
+<div class="schedule-section">
+    <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+            <div class="d-flex align-center gap-12">
+                <span class="card-title"><i class="fas fa-calendar-days" style="color:var(--accent)"></i> Месечен График</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <button class="btn btn-ghost btn-icon-sm" onclick="navigateMonth(-1)" title="Предишен месец">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span style="font-weight:600;font-size:14px;min-width:140px;text-align:center">
+                        @(schedule?.MonthName ?? "")
+                    </span>
+                    <button class="btn btn-ghost btn-icon-sm" onclick="navigateMonth(1)" title="Следващ месец">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex gap-8">
+                <a asp-action="DownloadReport" asp-route-locationId="@Model.Id"
+                   asp-route-year="@curYear" asp-route-month="@curMonth"
+                   class="btn btn-success btn-sm">
+                    <i class="fas fa-file-word"></i> Изтегли DOCX отчет
+                </a>
+                <button onclick="printSchedule()" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-print"></i> Принтирай
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body" style="padding:0 0 4px">
+            @if (schedule == null || !schedule.Staff.Any())
+            {
+                <div class="empty-state" style="padding:40px">
+                    <i class="fas fa-calendar-xmark" style="font-size:36px;opacity:.25;color:var(--primary)"></i>
+                    <p style="margin-top:12px;font-size:15px">Няма данни за график</p>
+                    <p class="text-muted mt-4">Назначете служители към обекта, за да започнете планирането</p>
+                </div>
+            }
+            else
+            {
+                <div class="schedule-table-wrap" id="schedule-print-area">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th class="staff-col">Служител</th>
+                                @for (int d = 1; d <= schedule.DaysInMonth; d++)
+                                {
+                                    var dayOfWeek = new DateTime(schedule.Year, schedule.Month, d).DayOfWeek;
+                                    var isWeekend = dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday;
+                                    <th style="@(isWeekend ? "background:#1a2f4f;" : "")">@d</th>
+                                }
+                                <th class="total-col">Общо ч.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var staff in schedule.Staff)
+                            {
+                                decimal rowTotal = 0;
+                                <tr>
+                                    <td class="name-cell">@staff.Name</td>
+                                    @for (int d = 1; d <= schedule.DaysInMonth; d++)
+                                    {
+                                        var entry = schedule.Entries.GetValueOrDefault((staff.Id, d));
+                                        rowTotal += entry?.HoursWorked ?? 0;
+                                        var hasEntry = entry != null && entry.HoursWorked > 0;
+                                        var shiftClass = entry?.ShiftType == ShiftType.Night ? "night" : "day";
+                                        var shiftLabel = entry?.ShiftType == ShiftType.Night ? "Н" : "Д";
+                                        var currentShift = entry?.ShiftType == ShiftType.Night ? "N" : "D";
+                                        var dayOfWeek = new DateTime(schedule.Year, schedule.Month, d).DayOfWeek;
+                                        var isWeekend = dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday;
+                                        <td style="@(isWeekend ? "background:var(--surface-3);" : "")padding:4px">
+                                            <button type="button"
+                                                    id="cell-@(staff.Id)-@d"
+                                                    class="schedule-cell-btn @(hasEntry ? $"has-entry {shiftClass}" : "")"
+                                                    data-shift="@(hasEntry ? currentShift : "")"
+                                                    data-hours="@(entry?.HoursWorked ?? 0)"
+                                                    onclick="openScheduleModal(@staff.Id,'@Html.Raw(staff.Name.Replace("'","\\'"  ))' ,@Model.Id,@d,@schedule.Month,@schedule.Year,@(entry?.HoursWorked ?? 0),'@(hasEntry ? currentShift : "D")','@(entry?.Notes?.Replace("'","\\'"  ) ?? "")')">
+                                                @if (hasEntry)
+                                                {
+                                                    <span class="cell-shift @shiftClass">@shiftLabel</span>
+                                                    <span class="cell-hours">@entry!.HoursWorked.ToString("0.#")ч.</span>
+                                                }
+                                                else
+                                                {
+                                                    <span style="color:var(--text-muted);font-size:10px">–</span>
+                                                }
+                                            </button>
+                                        </td>
+                                    }
+                                    <td class="total-cell" id="total-@staff.Id">
+                                        @(rowTotal > 0 ? rowTotal.ToString("0.#") : "–")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding:10px 16px;display:flex;gap:20px;font-size:12px;color:var(--text-muted)">
+                    <span>
+                        <span style="display:inline-block;width:12px;height:12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:3px;vertical-align:middle;margin-right:4px"></span>
+                        <strong style="color:var(--accent)">Д</strong> – Дневна смяна
+                    </span>
+                    <span>
+                        <span style="display:inline-block;width:12px;height:12px;background:#EDE9FE;border:1px solid #C4B5FD;border-radius:3px;vertical-align:middle;margin-right:4px"></span>
+                        <strong style="color:#7C3AED">Н</strong> – Нощна смяна
+                    </span>
+                    <span>
+                        <span style="display:inline-block;width:12px;height:12px;background:var(--surface-3);border:1px solid var(--border);border-radius:3px;vertical-align:middle;margin-right:4px"></span>
+                        Уикенд
+                    </span>
+                    <span style="margin-left:auto">Щракнете върху клетка, за да редактирате</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ─── Assign Staff Modal ──────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="assign-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title"><i class="fas fa-user-plus" style="color:var(--accent)"></i> Назначаване на служител</span>
+            <button class="modal-close" onclick="closeModal('assign-modal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <form asp-action="AssignStaff" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="locationId" value="@Model.Id" />
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Изберете служител</label>
+                    <select name="staffMemberId" class="form-control form-select" required>
+                        <option value="">-- Изберете служител --</option>
+                        @foreach (var s in allStaff)
+                        {
+                            var alreadyAssigned = Model.Assignments.Any(a => a.StaffMemberId == s.Id && a.IsActive);
+                            <option value="@s.Id" disabled="@alreadyAssigned">
+                                @s.Name @(alreadyAssigned ? "(вече назначен)" : "")
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('assign-modal')">Отказ</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Назначи</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ─── Schedule Cell Modal ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="schedule-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <span class="modal-title"><i class="fas fa-calendar-pen" style="color:var(--accent)"></i> Редактиране на смяна</span>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                    <span id="modal-staff-name"></span> · <span id="modal-day-label"></span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeModal('schedule-modal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Вид смяна</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s" id="shift-day-label">
+                        <input type="radio" name="shift" id="shift-day" value="D" checked
+                               onchange="updateShiftStyle()" style="accent-color:var(--accent)" />
+                        <div>
+                            <div style="font-weight:700;font-size:16px;color:var(--accent)">Д</div>
+                            <div style="font-size:12px;color:var(--text-muted)">Дневна смяна</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s" id="shift-night-label">
+                        <input type="radio" name="shift" id="shift-night" value="N"
+                               onchange="updateShiftStyle()" style="accent-color:#7C3AED" />
+                        <div>
+                            <div style="font-weight:700;font-size:16px;color:#7C3AED">Н</div>
+                            <div style="font-size:12px;color:var(--text-muted)">Нощна смяна</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Работни часове</label>
+                <div style="position:relative">
+                    <input type="number" id="schedule-hours" min="0" max="24" step="0.5"
+                           class="form-control" placeholder="0"
+                           style="font-size:22px;font-weight:700;text-align:center;padding:14px" />
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px">
+                    @foreach (var h in new[] { 4, 6, 8, 10, 12, 14, 16, 0 })
+                    {
+                        <button type="button" class="btn btn-ghost btn-sm"
+                                onclick="document.getElementById('schedule-hours').value='@h'"
+                                style="font-weight:600">
+                            @(h == 0 ? "Изтрий" : h + "ч.")
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Забележка (незадълж.)</label>
+                <input type="text" id="schedule-notes" class="form-control" placeholder="Допълнителна информация..." />
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('schedule-modal')">Отказ</button>
+            <button type="button" class="btn btn-primary" onclick="saveScheduleCell()">
+                <i class="fas fa-check"></i> Запази
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Keep URL search params when navigating months
+function navigateMonth(dir) {
+    const url = new URL(window.location.href);
+    let m = parseInt(url.searchParams.get('month') || '@curMonth');
+    let y = parseInt(url.searchParams.get('year')  || '@curYear');
+    m += dir;
+    if (m > 12) { m = 1; y++; }
+    if (m < 1)  { m = 12; y--; }
+    url.searchParams.set('month', m);
+    url.searchParams.set('year', y);
+    window.location.href = url.toString();
+}
+
+function updateShiftStyle() {
+    const dayLabel   = document.getElementById('shift-day-label');
+    const nightLabel = document.getElementById('shift-night-label');
+    const isDay = document.getElementById('shift-day').checked;
+    dayLabel.style.borderColor   = isDay ? 'var(--accent)' : 'var(--border)';
+    dayLabel.style.background    = isDay ? 'var(--accent-soft)' : '';
+    nightLabel.style.borderColor = !isDay ? '#7C3AED' : 'var(--border)';
+    nightLabel.style.background  = !isDay ? '#EDE9FE' : '';
+}
+
+// Run on modal open
+const origOpen = openModal;
+window.openModal = function(id) {
+    origOpen(id);
+    if (id === 'schedule-modal') updateShiftStyle();
+};
+</script>
+}

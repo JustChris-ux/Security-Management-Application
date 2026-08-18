@@ -1,0 +1,119 @@
+@model SecurityFirm.Models.Location
+@using SecurityFirm.Models
+@{
+    ViewData["Title"] = "Редактиране – " + Model.Name;
+}
+
+<div class="page-header">
+    <div class="d-flex align-center gap-16">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-ghost btn-icon">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="page-title">Редактиране на обект</h1>
+            <p class="page-subtitle">@Model.Name</p>
+        </div>
+    </div>
+</div>
+
+<div style="max-width:800px">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-16"></div>
+
+        <!-- Main info -->
+        <div class="card mb-16">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-building-shield" style="color:var(--accent)"></i> Основна информация</span>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="form-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="RiskLevel" class="form-label"></label>
+                        <select asp-for="RiskLevel" class="form-control form-select"
+                                asp-items="Html.GetEnumSelectList<RiskLevel>()">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Address" class="form-label"></label>
+                    <input asp-for="Address" class="form-control" />
+                    <span asp-validation-for="Address" class="form-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Info" class="form-label"></label>
+                    <textarea asp-for="Info" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                        <input asp-for="IsActive" type="checkbox"
+                               style="width:16px;height:16px;accent-color:var(--accent)" />
+                        <span>Активен обект</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cameras -->
+        <div class="card mb-16">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-video" style="color:var(--accent)"></i> Камери за видеонаблюдение</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addCameraRow()">
+                    <i class="fas fa-plus"></i> Нова камера
+                </button>
+            </div>
+            <div class="card-body">
+                @if (Model.Cameras.Any())
+                {
+                    <div style="display:grid;grid-template-columns:2fr 3fr auto;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">
+                        <span>Наименование</span><span>Местоположение</span><span></span>
+                    </div>
+                    @foreach (var cam in Model.Cameras)
+                    {
+                        <div class="d-flex gap-8 align-center mt-8">
+                            <input type="hidden" name="existingCameraIds" value="@cam.Id" />
+                            <input type="text" name="existingCameraNames" value="@cam.Name"
+                                   class="form-control" style="flex:2" />
+                            <input type="text" name="existingCameraPositions" value="@cam.Position"
+                                   placeholder="Местоположение (незадълж.)"
+                                   class="form-control" style="flex:3" />
+                            <div style="width:30px"></div>
+                        </div>
+                    }
+                }
+
+                <div id="cameras-container"></div>
+
+                <p class="text-muted mt-12" style="font-size:12px">
+                    <i class="fas fa-info-circle"></i> Премахнете ред, за да изтриете камерата
+                </p>
+            </div>
+        </div>
+
+        <div class="d-flex gap-10" style="justify-content:flex-end">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-ghost">Отказ</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-check"></i> Запази промените
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+}

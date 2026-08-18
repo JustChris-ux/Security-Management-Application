@@ -1,0 +1,125 @@
+@model SecurityFirm.Models.LocationFilterViewModel
+@using SecurityFirm.Models
+@{
+    ViewData["Title"] = "Обекти";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Обекти</h1>
+        <p class="page-subtitle">Всички охранявани обекти</p>
+    </div>
+    <div class="page-actions">
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Нов обект
+            </a>
+        }
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="search-input" style="flex:1;min-width:200px">
+        <i class="fas fa-search"></i>
+        <input type="text" name="search" value="@Model.SearchTerm"
+               placeholder="Търсене по наименование или адрес..."
+               class="form-control" />
+    </div>
+
+    <select name="riskLevel" class="form-control form-select" style="width:170px">
+        <option value="">Всички рискове</option>
+        <option value="1" selected="@(Model.RiskLevel == RiskLevel.Low)">Нисък риск</option>
+        <option value="2" selected="@(Model.RiskLevel == RiskLevel.Medium)">Среден риск</option>
+        <option value="3" selected="@(Model.RiskLevel == RiskLevel.High)">Висок риск</option>
+        <option value="4" selected="@(Model.RiskLevel == RiskLevel.Critical)">Критичен</option>
+    </select>
+
+    <select name="isActive" class="form-control form-select" style="width:150px">
+        <option value="">Всички статуси</option>
+        <option value="true" selected="@(Model.IsActive == true)">Активни</option>
+        <option value="false" selected="@(Model.IsActive == false)">Неактивни</option>
+    </select>
+
+    <select name="sortBy" class="form-control form-select" style="width:190px">
+        <option value="name_asc" selected="@(Model.SortBy == "name_asc" || Model.SortBy == null)">Сортиране: Азбучно</option>
+        <option value="risk_desc" selected="@(Model.SortBy == "risk_desc")">Риск: Висок → Нисък</option>
+        <option value="risk_asc" selected="@(Model.SortBy == "risk_asc")">Риск: Нисък → Висок</option>
+    </select>
+</form>
+<!-- Location grid -->
+@if (!Model.Locations.Any())
+{
+    <div class="card">
+        <div class="empty-state" style="padding:60px">
+            <i class="fas fa-building-shield" style="font-size:48px;opacity:.2;color:var(--primary)"></i>
+            <p style="margin-top:12px;font-size:16px;color:var(--text-secondary)">Няма намерени обекти</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="location-grid">
+        @foreach (var loc in Model.Locations)
+        {
+            var riskLabel = loc.RiskLevel switch {
+                RiskLevel.Low      => "Нисък риск",
+                RiskLevel.Medium   => "Среден риск",
+                RiskLevel.High     => "Висок риск",
+                RiskLevel.Critical => "Критичен",
+                _                  => ""
+            };
+            var riskBadge = loc.RiskLevel switch {
+                RiskLevel.Low      => "risk-badge-1",
+                RiskLevel.Medium   => "risk-badge-2",
+                RiskLevel.High     => "risk-badge-3",
+                RiskLevel.Critical => "risk-badge-4",
+                _                  => "badge-gray"
+            };
+            var fillClass = $"risk-fill-{(int)loc.RiskLevel}";
+            var activeAssignments = loc.Assignments.Count(a => a.IsActive);
+
+            <a asp-action="Details" asp-route-id="@loc.Id" class="location-card" style="@(loc.IsActive ? "" : "opacity:.55")">
+                <div class="location-card-top">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                        <div style="flex:1">
+                            <div class="location-card-name">@loc.Name</div>
+                            <div class="location-card-addr">
+                                <i class="fas fa-location-dot"></i> @loc.Address
+                            </div>
+                        </div>
+                        <span class="badge @riskBadge">@riskLabel</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(loc.Info))
+                    {
+                        <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                            @loc.Info
+                        </div>
+                    }
+                    <div class="risk-bar"><div class="@fillClass" style="height:3px;border-radius:2px"></div></div>
+                </div>
+                <div class="location-card-bottom">
+                    <div style="display:flex;gap:14px">
+                        <span style="font-size:12px;color:var(--text-muted)">
+                            <i class="fas fa-video"></i> @loc.Cameras.Count
+                        </span>
+                        <span style="font-size:12px;color:var(--text-muted)">
+                            <i class="fas fa-users"></i> @activeAssignments назначени
+                        </span>
+                    </div>
+                    @if (!loc.IsActive)
+                    {
+                        <span class="badge badge-gray">Неактивен</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-success"><i class="fas fa-circle" style="font-size:6px"></i>Активен</span>
+                    }
+                </div>
+            </a>
+        }
+    </div>
+    <div style="margin-top:16px;color:var(--text-muted);font-size:13px">
+        Намерени @Model.Locations.Count обекта
+    </div>
+}
