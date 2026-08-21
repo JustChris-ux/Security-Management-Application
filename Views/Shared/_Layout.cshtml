@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] – СекюрТийм</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="~/css/site.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <span class="brand-name">СекюрТийм</span>
+                <span class="brand-tagline">Управление на охраната</span>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-label">Основно</span>
+            <a asp-controller="Home" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+                <i class="fas fa-gauge-high"></i>
+                <span>Табло</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-label">Операции</span>
+            <a asp-controller="Locations" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Locations" ? "active" : "")">
+                <i class="fas fa-building-shield"></i>
+                <span>Обекти</span>
+            </a>
+            <a asp-controller="Staff" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Staff" ? "active" : "")">
+                <i class="fas fa-users"></i>
+                <span>Служители</span>
+            </a>
+        </div>
+
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="nav-section">
+                <span class="nav-label">Администрация</span>
+                <a asp-controller="Account" asp-action="Users" class="nav-item">
+                    <i class="fas fa-user-gear"></i>
+                    <span>Потребители</span>
+                </a>
+            </div>
+        }
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    @(User.Identity?.Name?.Length > 0 ? User.Identity.Name[0].ToString().ToUpper() : "?")
+                </div>
+                <div class="user-details">
+                    <span class="user-name">@User.Identity?.Name</span>
+                    <span class="user-role">
+                        @(User.IsInRole("Admin") ? "Администратор" : "Мениджър")
+                    </span>
+                </div>
+            </div>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn-logout" title="Изход">
+                    <i class="fas fa-right-from-bracket"></i>
+                </button>
+            </form>
+        </div>
+    </nav>
+
+    <!-- Mobile top bar -->
+    <header class="mobile-header">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <span class="mobile-title">СекюрТийм</span>
+        <div class="mobile-avatar">
+            @(User.Identity?.Name?.Length > 0 ? User.Identity.Name[0].ToString().ToUpper() : "?")
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Notifications -->
+        @if (TempData["Success"] != null)
+        {
+            <div class="notification success" id="notif-success">
+                <i class="fas fa-circle-check"></i>
+                <span>@TempData["Success"]</span>
+                <button onclick="this.parentElement.remove()"><i class="fas fa-xmark"></i></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="notification error" id="notif-error">
+                <i class="fas fa-circle-exclamation"></i>
+                <span>@TempData["Error"]</span>
+                <button onclick="this.parentElement.remove()"><i class="fas fa-xmark"></i></button>
+            </div>
+        }
+
+        @RenderBody()
+    </main>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- FAB (Floating Action Button) -->
+    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+    {
+        @* <div class="fab-container"> *@
+        @*     <button class="fab-main" id="fab-main" onclick="toggleFab()" title="Бързи действия"> *@
+        @*         <i class="fas fa-plus" id="fab-icon"></i> *@
+        @*     </button> *@
+        @*     <div class="fab-menu" id="fab-menu"> *@
+        @*         <a asp-controller="Staff" asp-action="Create" class="fab-item"> *@
+        @*             <span class="fab-label">Нов служител</span> *@
+        @*             <div class="fab-btn"><i class="fas fa-user-plus"></i></div> *@
+        @*         </a> *@
+        @*         <a asp-controller="Locations" asp-action="Create" class="fab-item"> *@
+        @*             <span class="fab-label">Нов обект</span> *@
+        @*             <div class="fab-btn"><i class="fas fa-plus-square"></i></div> *@
+        @*         </a> *@
+        @*         @if (User.IsInRole("Admin")) *@
+        @*         { *@
+        @*             <a asp-controller="Account" asp-action="RegisterManager" class="fab-item"> *@
+        @*                 <span class="fab-label">Нов мениджър</span> *@
+        @*                 <div class="fab-btn"><i class="fas fa-user-tie"></i></div> *@
+        @*             </a> *@
+        @*         } *@
+        @*     </div> *@
+        @* </div> *@
+        @* <div class="fab-overlay" id="fab-overlay" onclick="toggleFab()"></div> *@
+    }
+}
+else
+{
+    <main class="auth-main">
+        @RenderBody()
+    </main>
+}
+
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+
+<script>
+    // Auto-dismiss notifications
+    setTimeout(() => {
+        document.getElementById('notif-success')?.remove();
+        document.getElementById('notif-error')?.remove();
+    }, 5000);
+</script>
+</body>
+</html>
